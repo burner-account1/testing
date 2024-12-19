@@ -1,35 +1,52 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React, { useEffect, useState } from 'react';
+import Papa from 'papaparse';
 
-function App() {
-  const [count, setCount] = useState(0)
+const App = () => {
+  const [data, setData] = useState([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await fetch('https://docs.google.com/spreadsheets/d/e/2PACX-1vQDbJOcputZJPO5bniFKM_kmAvhmaQHHvNCGkZXTvUucOWxkiMKt6bz3UkjYZ3aanHy2gvIUyj6rlIQ/pub?output=tsv');
+        const text = await response.text();
+
+        // Parse the TSV data
+        const parsedData = Papa.parse(text, {
+          header: true,
+          delimiter: '\t',
+        });
+
+        setData(parsedData.data);
+      } catch (error) {
+        console.error('Error fetching TSV data:', error);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
-}
+    <div>
+      <h1>Spreadsheet Data</h1>
+      <table>
+        <thead>
+          <tr>
+            {data.length > 0 &&
+              Object.keys(data[0]).map((key, index) => <th key={index}>{key}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((row, index) => (
+            <tr key={index}>
+              {Object.values(row).map((value, idx) => (
+                <td key={idx}>{value}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
 
-export default App
+export default App;
