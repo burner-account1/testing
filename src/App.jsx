@@ -1,93 +1,140 @@
 import React, { useEffect, useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import Papa from 'papaparse';
 
+const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQDbJOcputZJPO5bniFKM_kmAvhmaQHHvNCGkZXTvUucOWxkiMKt6bz3UkjYZ3aanHy2gvIUyj6rlIQ/pub?output=tsv';
+
 const App = () => {
-  const [data, setData] = useState([]);
-  const [packingList, setPackingList] = useState([]);
-  const [pdfLink, setPdfLink] = useState('');
-  const [neededItems, setNeededItems] = useState([]);
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/mos/:mosId" element={<MOSPage />} />
+        <Route path="/mos/:mosId/course/:courseId" element={<CoursePage />} />
+      </Routes>
+    </Router>
+  );
+};
+
+const LandingPage = () => {
+  const [mosList, setMosList] = useState([]);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchMOSData = async () => {
       try {
-        const response = await fetch('https://docs.google.com/spreadsheets/d/e/2PACX-1vQDbJOcputZJPO5bniFKM_kmAvhmaQHHvNCGkZXTvUucOWxkiMKt6bz3UkjYZ3aanHy2gvIUyj6rlIQ/pub?output=tsv'); // Adjust this URL if necessary
+        const response = await fetch(SHEET_URL);
         const text = await response.text();
-
-        const parsedData = Papa.parse(text, {
-          header: true,
-          delimiter: '\t',
-        }).data;
-
-        // Extract PDF link and packing list items
-        const pdf = parsedData.find(row => row.pdf)?.pdf;
-        const items = parsedData.filter(row => row.Item && row.Quantity);
-
-        setPdfLink(pdf);
-        setPackingList(items);
+        const parsedData = Papa.parse(text, { header: true, delimiter: '\t' }).data;
+        const mosData = parsedData.filter(row => row.level === '1');
+        setMosList(mosData);
       } catch (error) {
-        console.error('Error fetching data:', error);
+        console.error('Error fetching MOS data:', error);
       }
     };
 
-    fetchData();
+    fetchMOSData();
   }, []);
-
-  const handleAddToNeeded = (item, quantity) => {
-    setNeededItems(prevItems => [...prevItems, { ...item, quantity }]);
-  };
 
   return (
     <div>
-      <h1>Packing List</h1>
+      <h1>Landing Page</h1>
+      <ul>
+        {mosList.map((mos, index) => (
+          <li key={index}>
+            <Link to={`/mos/${mos.id}`}>{mos.title}</Link>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+};
+
+const MOSPage = () => {
+  const [courses, setCourses] = useState([]);
+  const { mosId } = useParams();
+
+  useEffect(() => {
+    const fetchCourses = async () => {
+      try {
+        const response = await fetch(SHEET_URL);
+        const text = await response.text();
+        const parsedData = Papa.parse(text, { header: true, delimiter: '\t' }).data;
+        const courseData = parsedData.filter(row => row.level === '2' && row.parent === mosId);
+        setCourses(courseData);
+      } catch (error) {
+        console.error('Error fetching courses:', error);
+      }
+    };
+
+    fetchCourses();
+  }, [mosId]);
+
+  return (
+    <div>
+      <h1>MOS Page</h1>
+      <ul>
+        {courses.map((course, index) => (
+          <li key={index}>
+            <Link to={`/mos/${mosId}/course/${course.id}`}>{course.title}</Link>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+};
+
+const CoursePage = () => {
+  const [packingList, setPackingList] = useState([]);
+  const [pdfLink, setPdfLink] = useState('');
+  const { courseId } = useParams();
+
+  useEffect(() => {
+    const fetchPackingList = async () => {
+      try {
+        const response = await fetch(SHEET_URL);
+        const text = await response.text();
+        const parsedData = Papa.parse(text, { header: true, delimiter: '\t' }).data;
+        const courseData = parsedData.filter(row => row.level === '3' && row.parent === courseId);
+        const pdf = courseData[0]?.pdf;
+        setPdfLink(pdf);
+        setPackingList(courseData);
+      } catch (error) {
+        console.error('Error fetching packing list:', error);
+      }
+    };
+
+    fetchPackingList();
+  }, [courseId]);
+
+  return (
+    <div>
+      <h1>Course Page</h1>
       {pdfLink && (
         <a href={pdfLink} target="_blank" rel="noopener noreferrer">
           Download Packing List PDF
         </a>
       )}
-      <div>
-        <h2>Items</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>Item</th>
-              <th>Quantity</th>
-              <th>Actions</th>
+      <table>
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Quantity</th>
+          </tr>
+        </thead>
+        <tbody>
+          {packingList.map((item, index) => (
+            <tr
+              key={index}
+              style={{
+                backgroundColor: item.MandOpt === 'M' ? 'red' : item.MandOpt === 'O' ? 'green' : 'white',
+              }}
+            >
+              <td>{item.Item}</td>
+              <td>{item.Quantity}</td>
             </tr>
-          </thead>
-          <tbody>
-            {packingList.map((item, index) => (
-              <tr
-                key={index}
-                style={{
-                  backgroundColor: item.MandOpt === 'M' ? 'red' : item.MandOpt === 'O' ? 'green' : 'white',
-                }}
-              >
-                <td>{item.Item}</td>
-                <td>{item.Quantity}</td>
-                <td>
-                  <input
-                    type="number"
-                    defaultValue={item.Quantity}
-                    min="1"
-                    onChange={e => handleAddToNeeded(item, e.target.value)}
-                  />
-                  <button onClick={() => handleAddToNeeded(item, item.Quantity)}>
-                    Add to Needed
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <div>
-        <h2>Needed Items</h2>
-        <ul>
-          {neededItems.map((item, index) => (
-            <li key={index}>{`${item.Item} - Quantity: ${item.quantity}`}</li>
           ))}
-        </ul>
-      </div>
+        </tbody>
+      </table>
     </div>
   );
 };
