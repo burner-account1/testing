@@ -1,39 +1,44 @@
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, useParams } from 'react-router-dom';
 import Papa from 'papaparse';
 
-const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQDbJOcputZJPO5bniFKM_kmAvhmaQHHvNCGkZXTvUucOWxkiMKt6bz3UkjYZ3aanHy2gvIUyj6rlIQ/pub?output=tsv';
+const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRKJHzKw0BJ8t8NQCF5wQMN8RHfgeas6GYqqX_1RzQ9phevK4W1GG2mcTuomOiZhxIGo6tutebnwAG6/pub?output=tsv';
 
 const App = () => {
+  const [data, setData] = useState([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await fetch(SHEET_URL);
+        const text = await response.text();
+        const parsedData = Papa.parse(text, { header: true, delimiter: '\t' }).data;
+        setData(parsedData);
+      } catch (error) {
+        console.error('Error fetching spreadsheet:', error);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  if (!data.length) {
+    return <div>Loading...</div>;
+  }
+
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/mos/:mosId" element={<MOSPage />} />
-        <Route path="/mos/:mosId/course/:courseId" element={<CoursePage />} />
+        <Route path="/" element={<LandingPage data={data} />} />
+        <Route path="/mos/:mosId" element={<MOSPage data={data} />} />
+        <Route path="/mos/:mosId/course/:courseId" element={<CoursePage data={data} />} />
       </Routes>
     </Router>
   );
 };
 
-const LandingPage = () => {
-  const [mosList, setMosList] = useState([]);
-
-  useEffect(() => {
-    const fetchMOSData = async () => {
-      try {
-        const response = await fetch(SHEET_URL);
-        const text = await response.text();
-        const parsedData = Papa.parse(text, { header: true, delimiter: '\t' }).data;
-        const mosData = parsedData.filter(row => row.level === '1');
-        setMosList(mosData);
-      } catch (error) {
-        console.error('Error fetching MOS data:', error);
-      }
-    };
-
-    fetchMOSData();
-  }, []);
+const LandingPage = ({ data }) => {
+  const mosList = data.filter(row => row.level === '1');
 
   return (
     <div>
@@ -49,25 +54,9 @@ const LandingPage = () => {
   );
 };
 
-const MOSPage = () => {
-  const [courses, setCourses] = useState([]);
+const MOSPage = ({ data }) => {
   const { mosId } = useParams();
-
-  useEffect(() => {
-    const fetchCourses = async () => {
-      try {
-        const response = await fetch(SHEET_URL);
-        const text = await response.text();
-        const parsedData = Papa.parse(text, { header: true, delimiter: '\t' }).data;
-        const courseData = parsedData.filter(row => row.level === '2' && row.parent === mosId);
-        setCourses(courseData);
-      } catch (error) {
-        console.error('Error fetching courses:', error);
-      }
-    };
-
-    fetchCourses();
-  }, [mosId]);
+  const courses = data.filter(row => row.level === '2' && row.parent === mosId);
 
   return (
     <div>
@@ -83,28 +72,10 @@ const MOSPage = () => {
   );
 };
 
-const CoursePage = () => {
-  const [packingList, setPackingList] = useState([]);
-  const [pdfLink, setPdfLink] = useState('');
+const CoursePage = ({ data }) => {
   const { courseId } = useParams();
-
-  useEffect(() => {
-    const fetchPackingList = async () => {
-      try {
-        const response = await fetch(SHEET_URL);
-        const text = await response.text();
-        const parsedData = Papa.parse(text, { header: true, delimiter: '\t' }).data;
-        const courseData = parsedData.filter(row => row.level === '3' && row.parent === courseId);
-        const pdf = courseData[0]?.pdf;
-        setPdfLink(pdf);
-        setPackingList(courseData);
-      } catch (error) {
-        console.error('Error fetching packing list:', error);
-      }
-    };
-
-    fetchPackingList();
-  }, [courseId]);
+  const packingList = data.filter(row => row.level === '3' && row.parent === courseId);
+  const pdfLink = packingList[0]?.pdf;
 
   return (
     <div>
