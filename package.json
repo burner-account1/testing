@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "homepage":"https://sofg2.com",
+  "homepage": "https://sofg2.com",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -13,9 +13,11 @@
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {
+    "js-cookie": "^3.0.5",
     "papaparse": "^5.4.1",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^7.1.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.15.0",

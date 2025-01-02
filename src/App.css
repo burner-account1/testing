@@ -40,3 +40,9 @@
 .read-the-docs {
   color: #888;
 }
+/* App.css (example) */
+.app-container {
+  max-width: 800px; /* adjust this to your preference */
+  margin: 0 auto;   /* centers the container */
+  padding: 20px;    /* adds buffer around content */
+}
